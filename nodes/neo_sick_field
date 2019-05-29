@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+# convenient way to select a SICK field set by
+# toggling relayboard relays to a specific scanner input case
+#
+# 2019-05-29T03:32
+# author: tw
+
+from os import path as ph
+import rospy
+import yaml
+from std_srvs.srv import Trigger
+from neo_srvs.srv import RelayBoardSetRelay
+
+NODE = ph.basename(__file__)
+DIR = ph.dirname(ph.realpath(__file__))
+
+
+class Field():
+  def __init__(self):
+    rospy.init_node(NODE)
+
+    self.cfg = self.yaml2dict(ph.join(DIR, "..", "config", "mapping.yaml"))
+
+    # provide a new service for each sick_case
+    for field in self.cfg["sick_field-cases"].keys():
+      rospy.Service("~%s" % field, Trigger, self.make_callback(field))
+
+    self.sr = rospy.ServiceProxy("/relayboard_v2/set_relay", RelayBoardSetRelay)
+
+  def make_callback(self, field):
+    """
+    This function returns a new function to be called back.
+    The callback function gets the field as "hard coded" param.
+    """
+    def funcname(_):  # discard the Trigger srv data
+      return self.relays(field)
+    return funcname
+
+  def relays(self, field):
+    rospy.loginfo("setting relays for field case %r" % field)
+    ok = True
+    try:
+      # set_relay for each respective sick_input in the field case with mapping
+      for kSickInput, vState in self.cfg["sick_field-cases"][field].iteritems():
+        ok &= self.sr(self.cfg["sick_inputs2neo_relay"][kSickInput], vState == True).success  # sneaky way to remember all returns, and some ==True hack to discard potential cfg garbage :-P
+      if ok:
+        rospy.set_param("~field", "%s" % field)
+      return {"success": ok, "message": ""}
+    except rospy.ServiceException as e:
+      return {"success": False, "message": str(e)}
+
+    def __del__(self):
+      if rospy.has_param("~"):
+        rospy.delete_param("~")
+
+  @staticmethod
+  def yaml2dict(file):
+    rospy.loginfo("loading file %r" % file)
+    with open(file) as f:
+      return yaml.safe_load(f)
+
+
+if __name__ == "__main__":
+  try:
+    _ = Field()
+    rospy.spin()
+  except rospy.ROSInterruptException:
+    rospy.logfatal("%r finished" % NODE)
