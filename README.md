@@ -47,7 +47,7 @@ park
   name (key) of last successfully set field case
 + services
   - ~\<x>  
-  provides a service **std_srv.Trigger** for each entry in  `mapping.sick_field-cases`.  
+  provides a service **std_srvs.Trigger** for each entry in  `mapping.sick_field-cases`.  
   Those will call respective `/relayboard_v2/set_relay` for the scanner field case.
 + publishes
   - nothing

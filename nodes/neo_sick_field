@@ -22,7 +22,7 @@ class Field():
 
     self.cfg = self.yaml2dict(ph.join(DIR, "..", "config", "mapping.yaml"))
 
-    # provide a new service for each sick_case
+    # provide a new service for each sick_field-cases
     for field in self.cfg["sick_field-cases"].keys():
       rospy.Service("~%s" % field, Trigger, self.make_callback(field))
 
@@ -34,7 +34,7 @@ class Field():
     The callback function gets the field as "hard coded" param.
     """
     def funcname(_):  # discard the Trigger srv data
-      return self.relays(field)
+      return self.relays(field)  # return here to return the service result
     return funcname
 
   def relays(self, field):
